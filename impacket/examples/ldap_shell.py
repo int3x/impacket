@@ -677,6 +677,24 @@ class LdapShell(cmd.Cmd):
             else:
                 raise Exception('The server returned an error: %s', self.client.result['message'])
 
+    def do_set_attribute(self, line):
+        args = shlex.split(line)
+
+        if len(args) != 3:
+            raise Exception("Error expected target, attribute and attribute value. Recieved %d arguments instead." % len(args))
+
+        target, attribute, attribute_value = args
+
+        user_dn = self.get_dn(target)
+        if not user_dn:
+            raise Exception("User not found in LDAP: %s" % target)
+
+        res = self.client.modify(user_dn, {attribute: [(ldap3.MODIFY_REPLACE, [attribute_value])]})
+        if res:
+            print('Attribute %s on %s set to: %s result: OK' % (attribute, target, attribute_value))
+        else:
+            raise Exception('Failed to set attribute %s on %s : %s' % (attribute, target, str(self.client.result['description'])))
+
     def search(self, query, *attributes):
         self.client.search(self.domain_dumper.root, query, attributes=attributes)
         for entry in self.client.entries:
@@ -746,7 +764,8 @@ class LdapShell(cmd.Cmd):
  grant_control [search_base] target grantee - Grant full control on a given target object (sAMAccountName or search filter, optional search base) to the grantee (sAMAccountName).
  set_dontreqpreauth user true/false - Set the don't require pre-authentication flag to true or false.
  set_rbcd target grantee - Grant the grantee (sAMAccountName) the ability to perform RBCD to the target (sAMAccountName).
-set_shadow_creds target - Set shadow credentials on the target object (sAMAccountName).
+ set_shadow_creds target - Set shadow credentials on the target object (sAMAccountName).
+ set_attribute target attribute attribute_value - Set the attribute on target object to the specified value.
  start_tls - Send a StartTLS command to upgrade from LDAP to LDAPS. Use this to bypass channel binding for operations necessitating an encrypted channel.
  write_gpo_dacl user gpoSID - Write a full control ACE to the gpo for the given user. The gpoSID must be entered surrounding by {}.
  whoami - get connected user
